@@ -19,6 +19,7 @@ def main():
     dwtables = ['factv_318_PPM_Periodic_DT','factv_104_delays_DT']
     #temp_dw_list = list()
     
+    #test amendment
     #for table in dwtables:
         
     #    df = getDWdata('NR',table,start_period)
