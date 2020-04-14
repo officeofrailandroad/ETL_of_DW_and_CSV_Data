@@ -17,38 +17,38 @@ def main():
     
     start_period =2015201601
     dwtables = ['factv_318_PPM_Periodic_DT','factv_104_delays_DT']
-    #temp_dw_list = list()
+    temp_dw_list = list()
     
-    #test amendment
-    #for table in dwtables:
-        
-    #    df = getDWdata('NR',table,start_period)
-
-    #    print(f"transforming data from {table}")
-    #    transformed_dw_data = transform_dw_data(df)
-        
-    #    temp_dw_list.append(transformed_dw_data)
     
-    #final_data = pd.concat(temp_dw_list)
+    for table in dwtables:
+        
+        df = getDWdata('NR',table,start_period)
 
-    #exportfile(final_data,outputgoesto,f'combined_DW_output')    
+        print(f"transforming data from {table}")
+        transformed_dw_data = transform_dw_data(df)
+        
+        temp_dw_list.append(transformed_dw_data)
+    
+    final_data = pd.concat(temp_dw_list)
+
+    exportfile(final_data,outputgoesto,f'combined_DW_output')    
 
     #placeholder for csv files to be input
-    csvdict,filecount = getcsvdata(csvinput)
+    #csvdict,filecount = getcsvdata(csvinput)
 
-    csvdatalist = list()
-    for filename, data in csvdict.items():
+    #csvdatalist = list()
+    #for filename, data in csvdict.items():
         
-        if filename[0:3] == '104':
+    #    if filename[0:3] == '104':
             
-            temp = transform_104(data,start_period)
+    #        temp = transform_104(data,start_period)
 
-            csvdatalist.append(temp)
+    #        csvdatalist.append(temp)
 
 
-    csvdata = combinecsvfiles(csvdatalist,filecount)
+    #csvdata = combinecsvfiles(csvdatalist,filecount)
 
-    exportfile(csvdata,outputgoesto,f'combined_CSV_output') 
+    #exportfile(csvdata,outputgoesto,f'combined_CSV_output') 
 
 
 def transform_104(csv_data,start_period):
@@ -153,6 +153,15 @@ def transform_dw_data(dw_data):
 
     returns:        A pandas dataframe holding the transformed data
     """
+    
+    #group data by max if not being pivoted
+    min_and_max = dw_data.groupby('Option_3')['value'].agg(['min', 'max'])
+    dw_data = pd.merge(dw_data,min_and_max, on='Option_3',how='inner' )
+    
+    dw_data = movecol(dw_data,['min','max'],'number_of_days','After')
+
+    #reset index
+    #dw_data.reset_index(drop=True, inplace=True)
 
     # repeat rows by the number of days
     repeated_dw_data = dw_data.loc[dw_data.index.repeat(dw_data.number_of_days)]
@@ -163,26 +172,30 @@ def transform_dw_data(dw_data):
     td = pd.to_timedelta(repeated_dw_data.groupby(level=0).cumcount(), unit='d')
     repeated_dw_data['daily_date'] = repeated_dw_data['start_date'] + td
     
+    #### this has been commented out to remove pivoting
+    ##next step is to pivot the data by the daily date column.
+    ##pivoted_data = pd.pivot_table(repeated_dw_data,
+    ##                              index=['Location','Location_Type','Data_Type','Option_1','Option_2','Option_3','Option_4','Option_5'],
+    ##                                            columns=['Financial_Period_Key','start_date','end_date','daily_date'],
+    ##                                            values='value',
+    ##                                            aggfunc=np.sum)
+    ##
+    ####create a min and max column
+    ##pivoted_data['min_value'] = pivoted_data.min(axis=1)
+    ##pivoted_data['max_value'] = pivoted_data.max(axis=1)
 
-    #next step is to pivot the data by the daily date column.
-    pivoted_data = pd.pivot_table(repeated_dw_data,
-                                  index=['Location','Location_Type','Data_Type','Option_1','Option_2','Option_3','Option_4','Option_5'],
-                                                 columns=['Financial_Period_Key','start_date','end_date','daily_date'],
-                                                 values='value',
-                                                 aggfunc=np.sum)
 
-    #create a min and max column
-    pivoted_data['min_value'] = pivoted_data.min(axis=1)
-    pivoted_data['max_value'] = pivoted_data.max(axis=1)
+    ####move min and max columns
+    ##colstomove = ['max_value','min_value']
+
+    ##for cols in colstomove:
+    ##    pivoted_data= movecolumnstofront(pivoted_data,cols)
+
+    ###this section is to test mix/max on 
+    #minmaxframe = repeated_dw_data
 
 
-    #move min and max columns
-    colstomove = ['max_value','min_value']
-
-    for cols in colstomove:
-        pivoted_data= movecolumnstofront(pivoted_data,cols)
-
-    return pivoted_data
+    return repeated_dw_data
 
 
 def movecolumnstofront(df,fieldname):
